@@ -1,14 +1,4 @@
-function getMultipleRandom(arr, num) {
-  const shuffled = [...arr].sort(() => 0.5 - Math.random());
-
-  return shuffled.slice(0, num);
-}
-
-function ucFirst(str) {
-  if (!str) return str;
-
-  return str[0].toUpperCase() + str.slice(1);
-}
+const { getMultipleRandom, ucFirst } = require("./helpers");
 
 module.exports = {
   gameOptions: {
@@ -68,12 +58,21 @@ module.exports = {
       correctAnswer,
       buttons: {
         reply_markup: JSON.stringify({
-          inline_keyboard: [
-            quizArr.map((el) => ({
+          inline_keyboard: quizArr.reduce((acc, el, i) => {
+            let obj = {
               text: ucFirst(el.name),
               callback_data: `quiz_${el.name}`,
-            })),
-          ],
+            };
+            if (i === 0) {
+              acc.push([obj]);
+            } else if (acc[acc.length - 1].length < 3) {
+              acc[acc.length - 1].push(obj);
+            } else if (acc[acc.length - 1].length === 3) {
+              acc.push([obj]);
+            }
+            return acc;
+          }, []),
+          // ],
         }),
       },
     };

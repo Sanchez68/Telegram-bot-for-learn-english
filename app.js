@@ -5,79 +5,14 @@ const {
   startLearningOptions,
   quizGenerator,
 } = require("./options");
-const User = require("./models/User");
+const { getUserData, setUserData, deleteUserData } = require("./models/User");
 const mongoose = require("mongoose");
+const { uniqueArray } = require("./helpers");
+const { ALL_CARDS } = require("./Card");
 const token = "5328249325:AAFtp2eX8aph3Cmm0g1-QXCx52EWl4NZ5Ug";
 const bot = new TelegramApi(token, { polling: true });
 const connectMongoDB =
   "mongodb+srv://TestLA:okm@cluster0.wqrxk.mongodb.net/learnAuthDatabase";
-
-const ALL_CARDS = [
-  {
-    name: "frog",
-    img: "https://tlgrm.ru/_/stickers/faa/e35/faae3585-6cce-4cf5-b41a-b240e63f7fd0/1.jpg",
-  },
-  {
-    name: "cat",
-    img: "https://tlgrm.ru/_/stickers/d8c/a98/d8ca9867-01d8-342d-b2c1-940ea9ab187e/2.jpg",
-  },
-  {
-    name: "dog",
-    img: "https://tlgrm.ru/_/stickers/cf7/591/cf7591b6-db8d-3981-9107-bcaaeece8cdf/4.jpg",
-  },
-  {
-    name: "candy",
-    img: "https://tlgrm.ru/_/stickers/bab/cbf/babcbffa-13c5-370e-ad3f-685e7ae3f380/10.jpg",
-  },
-  {
-    name: "potato",
-    img: "https://upload.wikimedia.org/wikipedia/commons/4/47/Russet_potato_cultivar_with_sprouts.jpg",
-  },
-];
-
-const getUserData = async (id) => {
-  try {
-    const userData = await User.find({ id: id.toString() });
-    if (userData.length === 0) {
-      const user = new User({
-        id,
-      });
-      await user.save();
-      return { id };
-    } else {
-      return userData[0];
-    }
-  } catch (e) {
-    console.log(e);
-    console.log("GET data err");
-  }
-};
-
-const setUserData = async (id, data) => {
-  try {
-    const userId = await User.find({ id: id.toString() });
-    if (userId.length === 0) {
-      const user = new User({
-        id,
-      });
-      await user.save();
-    }
-    await User.findOneAndUpdate({ id: id.toString() }, data);
-    return { id, ...data };
-  } catch (e) {
-    console.log(e);
-    console.log("SET data err");
-  }
-};
-
-const deleteUserData = async (id) => {
-  try {
-    User.deleteOne({ id: id.toString() });
-  } catch (e) {
-    console.log(e);
-    console.log("DELETE data err");
-  }
-};
 
 const startLearn = async (chatId) => {
   let userData = await getUserData(chatId);
@@ -86,7 +21,7 @@ const startLearn = async (chatId) => {
 
   let generatedQuiz = quizGenerator(
     ALL_CARDS,
-    userData.level?.slice("level_") || 4
+    userData?.level?.slice("level_") || 4
   );
 
   await bot.sendPhoto(chatId, generatedQuiz.correctAnswer.img);
@@ -135,7 +70,7 @@ const start = async () => {
           chatId,
           `Вітаю в телеграм боті для вивчення англійської.`
         );
-        if (!userData.level) {
+        if (!userData?.level) {
           await bot.sendMessage(chatId, `Який у тебе рівень знань?`);
           await bot.sendMessage(chatId, "Обирай", levelOptions);
         }
@@ -145,19 +80,30 @@ const start = async () => {
       if (text === "/info") {
         let userData = await getUserData(chatId);
         let goodAnswers = userData?.goodAnswers || 0;
-        let badAnswers = userData?.badAnswers || 0;
-
-        return bot.sendMessage(
+        let badAnswers = userData?.badAnswers?.length || 0;
+        await bot.sendMessage(
           chatId,
           `Привіт ${msg.from.first_name}) Твій рахунок налічує правильних відповідей: ${goodAnswers}, неправильних: ${badAnswers}`
         );
+        if (badAnswers > 0) {
+          let badAnswersList = userData?.badAnswers || [];
+
+          await bot.sendMessage(
+            chatId,
+            `Серед них варто звернути увагу на слова: ${uniqueArray(
+              badAnswersList
+            ).reduce((acc, el) => (acc ? acc + ", " + el : el), "")}`
+          );
+        }
+        return;
       }
 
       if (text === "/learn") {
         return startLearn(chatId);
       }
       if (text === "/delete") {
-        return deleteUserData(chatId);
+        await deleteUserData(chatId);
+        return bot.sendMessage(chatId, "Дані очищено");
       }
 
       if (text === "/stop") {
@@ -231,7 +177,10 @@ const start = async () => {
         } else {
           let userData = await getUserData(chatId);
           await setUserData(chatId, {
-            badAnswers: Number(userData?.badAnswers || 0) + 1,
+            badAnswers: [
+              ...(userData.badAnswers || []),
+              userData.correctAnswer,
+            ].filter(Boolean),
             correctAnswer: "",
           });
           return bot.sendMessage(
