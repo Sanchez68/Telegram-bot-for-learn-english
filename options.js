@@ -47,9 +47,9 @@ module.exports = {
   levelOptions: {
     reply_markup: JSON.stringify({
       inline_keyboard: [
-        [{ text: "Початковий", callback_data: "level_1" }],
-        [{ text: "Середній", callback_data: "level_2" }],
-        [{ text: "Досвідчений", callback_data: "level_3" }],
+        [{ text: "Початковий", callback_data: "level_2" }],
+        [{ text: "Середній", callback_data: "level_4" }],
+        [{ text: "Досвідчений", callback_data: "level_6" }],
       ],
     }),
   },

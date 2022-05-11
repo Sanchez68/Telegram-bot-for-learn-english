@@ -11,6 +11,15 @@ const schema = new Schema({
   level: {
     type: String,
   },
+  goodAnswers: {
+    type: String,
+  },
+  badAnswers: {
+    type: String,
+  },
+  correctAnswer: {
+    type: String,
+  },
 });
 
 module.exports = model("User", schema);

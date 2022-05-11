@@ -11,7 +11,6 @@ const token = "5328249325:AAFtp2eX8aph3Cmm0g1-QXCx52EWl4NZ5Ug";
 const bot = new TelegramApi(token, { polling: true });
 const connectMongoDB =
   "mongodb+srv://TestLA:okm@cluster0.wqrxk.mongodb.net/learnAuthDatabase";
-const chats = {};
 
 const ALL_CARDS = [
   {
@@ -39,7 +38,7 @@ const ALL_CARDS = [
 const getUserData = async (id) => {
   try {
     const userData = await User.find({ id: id.toString() });
-    if (userId.length === 0) {
+    if (userData.length === 0) {
       const user = new User({
         id,
       });
@@ -48,10 +47,9 @@ const getUserData = async (id) => {
     } else {
       return userData[0];
     }
-
-    console.log("userId", userData);
   } catch (e) {
-    console.log("GET data err", e);
+    console.log(e);
+    console.log("GET data err");
   }
 };
 
@@ -67,19 +65,40 @@ const setUserData = async (id, data) => {
     await User.findOneAndUpdate({ id: id.toString() }, data);
     return { id, ...data };
   } catch (e) {
-    console.log("SET data err", e);
+    console.log(e);
+    console.log("SET data err");
+  }
+};
+
+const deleteUserData = async (id) => {
+  try {
+    User.deleteOne({ id: id.toString() });
+  } catch (e) {
+    console.log(e);
+    console.log("DELETE data err");
   }
 };
 
 const startLearn = async (chatId) => {
+  let userData = await getUserData(chatId);
+
   await bot.sendMessage(chatId, `Спробуй вибрати правильну відповідь!`);
 
-  let generatedQuiz = quizGenerator(ALL_CARDS, 4);
+  let generatedQuiz = quizGenerator(
+    ALL_CARDS,
+    userData.level?.slice("level_") || 4
+  );
 
   await bot.sendPhoto(chatId, generatedQuiz.correctAnswer.img);
 
-  chats[chatId] = { correctAnswer: generatedQuiz.correctAnswer };
-  await bot.sendMessage(chatId, "Відгадуй", generatedQuiz.buttons);
+  await setUserData(chatId, {
+    correctAnswer: generatedQuiz.correctAnswer?.name || "",
+  });
+  await bot.sendMessage(
+    chatId,
+    "Яка правильна відповідь?",
+    generatedQuiz.buttons
+  );
 };
 
 const start = async () => {
@@ -89,6 +108,7 @@ const start = async () => {
       useNewUrlParser: true,
     });
   } catch (e) {
+    console.log(e);
     console.log("MONGO CONNECT ERR");
   }
 
@@ -97,6 +117,7 @@ const start = async () => {
     { command: "/info", description: "Отримати інформацію про користувача" },
     { command: "/learn", description: "Почати Навчання" },
     { command: "/stop", description: "Зупинити навчання" },
+    { command: "/delete", description: "Видалити дані про себе" },
   ]);
 
   bot.on("message", async (msg) => {
@@ -106,61 +127,54 @@ const start = async () => {
     console.log("message msg", msg);
     try {
       if (text === "/start") {
-        const userId = await User.find({ id: chatId.toString() }); //id:chatId.toString()
-        console.log("userId", userId);
-        if (userId.length === 0) {
-          const user = new User({
-            id: chatId,
-            name: text,
-          });
-          await user.save();
-        }
-        await User.findOneAndUpdate(
-          { id: chatId.toString() },
-          { name: msg.from.first_name }
-        );
+        let userData = await getUserData(chatId);
 
-        console.log(userId);
         await bot.sendMessage(chatId, `Привіт ${msg.from.first_name}!`);
-        // await bot.sendSticker(
-        //   chatId,
-        //   "https://tlgrm.ru/_/stickers/ea5/382/ea53826d-c192-376a-b766-e5abc535f1c9/7.webp"
-        // );
+
         await bot.sendMessage(
           chatId,
-          `Вітаю тебе в телеграм боті для вивчення англійської. Який у тебе рівень знань?`
+          `Вітаю в телеграм боті для вивчення англійської.`
         );
-        return bot.sendMessage(chatId, "Обирай", levelOptions);
+        if (!userData.level) {
+          await bot.sendMessage(chatId, `Який у тебе рівень знань?`);
+          await bot.sendMessage(chatId, "Обирай", levelOptions);
+        }
+        return;
       }
 
       if (text === "/info") {
-        // const user = await UserModel.findOne({chatId})
+        let userData = await getUserData(chatId);
+        let goodAnswers = userData?.goodAnswers || 0;
+        let badAnswers = userData?.badAnswers || 0;
 
         return bot.sendMessage(
           chatId,
-          `Привіт ${
-            msg.from.first_name
-          }) Твій рахунок налічує правильних відповідей: ${
-            chats[chatId]?.goodAnswers || 0
-          }, неправильних: ${chats[chatId]?.badAnswers || 0}`
+          `Привіт ${msg.from.first_name}) Твій рахунок налічує правильних відповідей: ${goodAnswers}, неправильних: ${badAnswers}`
         );
       }
 
       if (text === "/learn") {
         return startLearn(chatId);
       }
+      if (text === "/delete") {
+        return deleteUserData(chatId);
+      }
 
       if (text === "/stop") {
+        let userData = await getUserData(chatId);
+
         return bot.sendMessage(
           chatId,
-          `Ваш рахунок :${
-            chats[chatId].goodAnswers || 0
-          }Гарна робота! Повертайся пізніше) `
+          `Ваш рахунок: ${
+            userData?.goodAnswers || 0
+          }. Гарна робота! Повертайтесь пізніше) `
         );
       }
 
       return bot.sendMessage(chatId, "Я тебе не розумію, спробуй ще раз!)");
     } catch (e) {
+      console.log(e);
+      console.log("Проблемка з message");
       return bot.sendMessage(chatId, "Проблемка з message");
     }
   });
@@ -173,6 +187,7 @@ const start = async () => {
     try {
       await bot.deleteMessage(chatId, msgId);
     } catch (e) {
+      console.log(e);
       console.log("Delete button error");
     }
 
@@ -181,18 +196,18 @@ const start = async () => {
         return startLearn(chatId);
       }
       if (data === "/stop") {
+        let userData = await getUserData(chatId);
+
         return bot.sendMessage(
           chatId,
           `Ваш рахунок :${
-            chats[chatId].goodAnswers || 0
-          }. Гарна робота! Повертайся пізніше) `
+            userData?.goodAnswers || 0
+          }. Гарна робота! Повертайтесь пізніше) `
         );
       }
       if (data.includes("level")) {
-        await User.findOneAndUpdate(
-          { id: chatId.toString() },
-          { level: data.split("_")[1] }
-        );
+        data = data.replace("level_", "");
+        await setUserData(chatId, { level: data });
         return bot.sendMessage(
           chatId,
           "Чудово, готовий почати?",
@@ -200,18 +215,25 @@ const start = async () => {
         );
       }
       if (data.includes("quiz")) {
-        data = data.split("_")[1];
-        if (chats[chatId].correctAnswer.name === data) {
-          chats[chatId].goodAnswers = (chats[chatId].goodAnswers || 0) + 1;
-          // TODO Set result in db
+        data = data.replace("quiz_", "");
+        let userData = await getUserData(chatId);
+
+        if (userData.correctAnswer === data) {
+          await setUserData(chatId, {
+            goodAnswers: Number(userData?.goodAnswers || 0) + 1,
+            correctAnswer: "",
+          });
           return bot.sendMessage(
             chatId,
             "Правильно! Сробувати ще раз?",
             againOptions
           );
         } else {
-          // TODO Set result in db
-          chats[chatId].badAnswers = (chats[chatId].badAnswers || 0) + 1;
+          let userData = await getUserData(chatId);
+          await setUserData(chatId, {
+            badAnswers: Number(userData?.badAnswers || 0) + 1,
+            correctAnswer: "",
+          });
           return bot.sendMessage(
             chatId,
             "Помилка(, спробуй ще раз",
@@ -222,6 +244,7 @@ const start = async () => {
 
       return bot.sendMessage(chatId, "Я тебе не розумію, спробуй ще раз!)");
     } catch (e) {
+      console.log(e);
       console.log("Проблемка з callback_query");
     }
   });
