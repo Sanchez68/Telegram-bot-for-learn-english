@@ -36,6 +36,41 @@ const ALL_CARDS = [
   },
 ];
 
+const getUserData = async (id) => {
+  try {
+    const userData = await User.find({ id: id.toString() });
+    if (userId.length === 0) {
+      const user = new User({
+        id,
+      });
+      await user.save();
+      return { id };
+    } else {
+      return userData[0];
+    }
+
+    console.log("userId", userData);
+  } catch (e) {
+    console.log("GET data err", e);
+  }
+};
+
+const setUserData = async (id, data) => {
+  try {
+    const userId = await User.find({ id: id.toString() });
+    if (userId.length === 0) {
+      const user = new User({
+        id,
+      });
+      await user.save();
+    }
+    await User.findOneAndUpdate({ id: id.toString() }, data);
+    return { id, ...data };
+  } catch (e) {
+    console.log("SET data err", e);
+  }
+};
+
 const startLearn = async (chatId) => {
   await bot.sendMessage(chatId, `Спробуй вибрати правильну відповідь!`);
 
@@ -100,9 +135,14 @@ const start = async () => {
 
       if (text === "/info") {
         // const user = await UserModel.findOne({chatId})
+
         return bot.sendMessage(
           chatId,
-          `Привіт ${msg.from.first_name}) Твій рахунок налічує правильних відповідей: ${chats[chatId].goodAnswers}, неправильних: ${chats[chatId].badAnswers}`
+          `Привіт ${
+            msg.from.first_name
+          }) Твій рахунок налічує правильних відповідей: ${
+            chats[chatId]?.goodAnswers || 0
+          }, неправильних: ${chats[chatId]?.badAnswers || 0}`
         );
       }
 
