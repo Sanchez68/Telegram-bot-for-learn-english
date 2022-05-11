@@ -1,13 +1,10 @@
 const TelegramApi = require("node-telegram-bot-api");
 const {
-  gameOptions,
   againOptions,
   levelOptions,
   startLearningOptions,
   quizGenerator,
 } = require("./options");
-// const sequelize = require('./db ');
-const UserModel = require("./models");
 const User = require("./models/User");
 const mongoose = require("mongoose");
 const token = "5328249325:AAFtp2eX8aph3Cmm0g1-QXCx52EWl4NZ5Ug";
@@ -38,27 +35,12 @@ const ALL_CARDS = [
     img: "https://upload.wikimedia.org/wikipedia/commons/4/47/Russet_potato_cultivar_with_sprouts.jpg",
   },
 ];
-//
-// const startGame = async (chatId) => {
-//   await bot.sendMessage(
-//     chatId,
-//     `Зараз я загадаю тобі цифру від 0 до 9, а ти повинен її вгадати!`
-//   );
-//   const randomNumber = Math.floor(Math.random() * 10);
-//   chats[chatId] = randomNumber;
-//   await bot.sendMessage(chatId, "Відгадуй", gameOptions);
-// };
 
 const startLearn = async (chatId) => {
   await bot.sendMessage(chatId, `Спробуй вибрати правильну відповідь!`);
 
   let generatedQuiz = quizGenerator(ALL_CARDS, 4);
-  // console.log(generatedQuiz);
 
-  // await bot.sendSticker(
-  //   chatId,
-  //   "https://tlgrm.ru/_/stickers/d8c/a98/d8ca9867-01d8-342d-b2c1-940ea9ab187e/2.jpg"
-  // );
   await bot.sendPhoto(chatId, generatedQuiz.correctAnswer.img);
 
   chats[chatId] = { correctAnswer: generatedQuiz.correctAnswer };
@@ -66,13 +48,13 @@ const startLearn = async (chatId) => {
 };
 
 const start = async () => {
-  console.log("START");
+  console.log("APP STARTED");
   try {
     await mongoose.connect(connectMongoDB, {
       useNewUrlParser: true,
     });
   } catch (e) {
-    console.log(e);
+    console.log("MONGO CONNECT ERR");
   }
 
   bot.setMyCommands([
@@ -85,8 +67,8 @@ const start = async () => {
   bot.on("message", async (msg) => {
     const text = msg.text;
     const chatId = msg.chat.id;
-    console.log("msg", msg);
-    // console.log('chatId',typeof chatId)
+
+    console.log("message msg", msg);
     try {
       if (text === "/start") {
         const userId = await User.find({ id: chatId.toString() }); //id:chatId.toString()
@@ -139,8 +121,7 @@ const start = async () => {
 
       return bot.sendMessage(chatId, "Я тебе не розумію, спробуй ще раз!)");
     } catch (e) {
-      console.log("ERROR", e);
-      return bot.sendMessage(chatId, "Сталася якась помилка!)");
+      return bot.sendMessage(chatId, "Проблемка з message");
     }
   });
 
@@ -198,29 +179,11 @@ const start = async () => {
           );
         }
       }
+
+      return bot.sendMessage(chatId, "Я тебе не розумію, спробуй ще раз!)");
     } catch (e) {
       console.log("Проблемка з callback_query");
     }
-    //   if (data === "/again") {
-    //     return startGame(chatId);
-    //   }
-    //   const user = await UserModel.findOne({ chatId });
-    //   if (data == chats[chatId]) {
-    //     user.right += 1;
-    //     await bot.sendMessage(
-    //       chatId,
-    //       `Вітаю, ти відгадав цифру ${chats[chatId]}`,
-    //       againOptions
-    //     );
-    //   } else {
-    //     user.wrong += 1;
-    //     await bot.sendMessage(
-    //       chatId,
-    //       `На жаль ти не вгадав, бот загадав цифру ${chats[chatId]}`,
-    //       againOptions
-    //     );
-    //   }
-    //   // await user.save();
   });
 };
 
