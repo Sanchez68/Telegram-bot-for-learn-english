@@ -30,7 +30,7 @@ const startLearn = async (chatId) => {
       ALL_CARDS,
       userData?.level?.slice("level_") || 4
     );
-
+    console.log("CORRECT ANSWER OBJ", generatedQuiz.correctAnswer);
     await bot.sendPhoto(chatId, generatedQuiz.correctAnswer.img);
 
     await setUserData(chatId, {
