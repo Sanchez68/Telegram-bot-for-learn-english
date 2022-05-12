@@ -19,10 +19,6 @@ const ALL_CARDS = [
     name: "potato",
     img: "https://upload.wikimedia.org/wikipedia/commons/4/47/Russet_potato_cultivar_with_sprouts.jpg",
   },
-  {
-    name: "ice",
-    img: "https://www.google.com/url?sa=i&url=https%3A%2F%2Fpixabay.com%2Fru%2Fimages%2Fsearch%2Fice%2F&psig=AOvVaw0OnMkO8kF4s-dyxv-dYAs9&ust=1652395951508000&source=images&cd=vfe&ved=0CAwQjRxqFwoTCPisx-DE2PcCFQAAAAAdAAAAABAD",
-  },
 ];
 
 module.exports = { ALL_CARDS };
