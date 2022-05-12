@@ -14,26 +14,36 @@ const bot = new TelegramApi(token, { polling: true });
 const connectMongoDB =
   "mongodb+srv://TestLA:okm@cluster0.wqrxk.mongodb.net/learnAuthDatabase";
 
+const errorHandler = (e, place, chatId) => {
+  console.log(e);
+  console.log(`Виникла проблема у: ${place}`);
+  chatId && bot.sendMessage(chatId, `Виникла якась проблема(`);
+};
+
 const startLearn = async (chatId) => {
-  let userData = await getUserData(chatId);
+  try {
+    let userData = await getUserData(chatId);
 
-  await bot.sendMessage(chatId, `Спробуй вибрати правильну відповідь!`);
+    await bot.sendMessage(chatId, `Спробуй вибрати правильну відповідь!`);
 
-  let generatedQuiz = quizGenerator(
-    ALL_CARDS,
-    userData?.level?.slice("level_") || 4
-  );
+    let generatedQuiz = quizGenerator(
+      ALL_CARDS,
+      userData?.level?.slice("level_") || 4
+    );
 
-  await bot.sendPhoto(chatId, generatedQuiz.correctAnswer.img);
+    await bot.sendPhoto(chatId, generatedQuiz.correctAnswer.img);
 
-  await setUserData(chatId, {
-    correctAnswer: generatedQuiz.correctAnswer?.name || "",
-  });
-  await bot.sendMessage(
-    chatId,
-    "Яка правильна відповідь?",
-    generatedQuiz.buttons
-  );
+    await setUserData(chatId, {
+      correctAnswer: generatedQuiz.correctAnswer?.name || "",
+    });
+    await bot.sendMessage(
+      chatId,
+      "Яка правильна відповідь?",
+      generatedQuiz.buttons
+    );
+  } catch (e) {
+    await errorHandler(e, "startLearn", chatId);
+  }
 };
 
 const start = async () => {
@@ -43,8 +53,7 @@ const start = async () => {
       useNewUrlParser: true,
     });
   } catch (e) {
-    console.log(e);
-    console.log("MONGO CONNECT ERR");
+    await errorHandler(e, "MONGO CONNECT");
   }
 
   bot.setMyCommands([
@@ -119,9 +128,7 @@ const start = async () => {
 
       return bot.sendMessage(chatId, "Я тебе не розумію, спробуй ще раз!)");
     } catch (e) {
-      console.log(e);
-      console.log("Проблемка з message");
-      return bot.sendMessage(chatId, "Проблемка з message");
+      await errorHandler(e, " message", chatId);
     }
   });
 
@@ -133,8 +140,7 @@ const start = async () => {
     try {
       await bot.deleteMessage(chatId, msgId);
     } catch (e) {
-      console.log(e);
-      console.log("Delete button error");
+      await errorHandler(e, "delete button", chatId);
     }
 
     try {
@@ -193,8 +199,7 @@ const start = async () => {
 
       return bot.sendMessage(chatId, "Я тебе не розумію, спробуй ще раз!)");
     } catch (e) {
-      console.log(e);
-      console.log("Проблемка з callback_query");
+      await errorHandler(e, " callback_query", chatId);
     }
   });
 };
